@@ -103,41 +103,40 @@ def convert_to_fiftyone_keypoints(points):
 
     return keypoints_list
 
-# Convert and set values in the dataset
-bbox_coords = dataset.values('bbox')
-detections = convert_to_fiftyone_detections(bbox_coords)
-dataset.set_values("action_detections", detections)
 
-point_coords = dataset.values('point')
-keypoints = convert_to_fiftyone_keypoints(point_coords)
-dataset.set_values("action_keypoints", keypoints)
+def main():
+    # Load the Parquet file into a pandas DataFrame
+    df = pd.read_parquet('ShowUI-web/data/train-00000-of-00001.parquet')
+    
+    # Set base directory
+    base_dir = "/home/harpreet/workspace/show-ui"
+    
+    # Create and process the dataset
+    dataset = create_fiftyone_dataset(df, base_dir)
+    
+    # Convert and set values in the dataset
+    bbox_coords = dataset.values('bbox')
+    detections = convert_to_fiftyone_detections(bbox_coords)
+    dataset.set_values("action_detections", detections)
 
-query_types = dataset.values('type')
-queries = convert_to_fiftyone_classifications(query_types)
-dataset.set_values("query_type", queries)
+    point_coords = dataset.values('point')
+    keypoints = convert_to_fiftyone_keypoints(point_coords)
+    dataset.set_values("action_keypoints", keypoints)
 
-folder_path = [path.split('/')[1] for path in dataset.values("image_url")]
-interfaces = convert_to_fiftyone_classifications(folder_path)
-dataset.set_values("interfaces", interfaces)
+    query_types = dataset.values('type')
+    queries = convert_to_fiftyone_classifications(query_types)
+    dataset.set_values("query_type", queries)
 
-# Clean up and prepare dataset
-dataset.delete_sample_fields(['image_url', 'bbox', 'point', 'type', 'row_idx'])
-dataset.add_dynamic_sample_fields()
-dataset = dataset.shuffle()
-dataset.compute_metadata()
-dataset.save()
+    folder_path = [path.split('/')[1] for path in dataset.values("image_url")]
+    interfaces = convert_to_fiftyone_classifications(folder_path)
+    dataset.set_values("interfaces", interfaces)
 
-# Push to HuggingFace Hub
-fouh.push_to_hub(
-    dataset,
-    "ShowUI_desktop",
-    batch_size=1000,
-    exist_ok=True,
-)
+    # Clean up and prepare dataset
+    dataset.delete_sample_fields(['image_url', 'bbox', 'point', 'type', 'row_idx'])
+    dataset.add_dynamic_sample_fields()
+    dataset = dataset.shuffle()
+    dataset.compute_metadata()
+    dataset.save()
 
-# Example of loading the pushed dataset
-import fiftyone as fo
-from fiftyone.utils.huggingface import load_from_hub
-
-# Load the dataset
-dataset = load_from_hub("Voxel51/ShowUI_desktop")
+if __name__ == "__main__":
+    main()
